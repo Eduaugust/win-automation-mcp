@@ -59,9 +59,17 @@ Windows services and plain ssh logins live in session 0, which has no desktop: t
 
 ## Install (in the Windows VM)
 
+Prebuilt: download `WinAutomationMcp-0.4.0-win-arm64.zip` from [Releases](../../releases), unzip it anywhere and register the logon task. It needs the [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) and bundles an ARM64 ffmpeg (BtbN GPL build), so it targets Windows on ARM (for example a UTM VM on Apple Silicon).
+
+```powershell
+cd WinAutomationMcp
+.\install-task.ps1 -Port 8765 -StartNow
+```
+
+On x64, build it yourself and drop an x64 `ffmpeg.exe` into `.\tools\` (or set `WIN_MCP_FFMPEG`):
+
 ```powershell
 dotnet build -c Release -nologo
-# ffmpeg for recordings: put ffmpeg.exe (and ffprobe.exe) in .\tools\ or set WIN_MCP_FFMPEG
 .\install-task.ps1 -Port 8765 -StartNow
 ```
 
