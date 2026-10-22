@@ -1,0 +1,133 @@
+#!/usr/bin/env python3
+"""Lazy MCP proxy for win-automation-mcp in the win-demo VM.
+
+Claude Code starts this on every session. It answers initialize, tools/list and
+ping from a cache, so the VM stays off until the model actually calls a tool.
+On the first other request it runs `win-demo-vm` (boot/resume the VM and open
+an SSH stdio tunnel), replays the handshake, and from then on forwards both
+ways. `win-demo-mcp --refresh-cache` boots the VM and rebuilds the cache.
+"""
+import json
+import os
+import subprocess
+import sys
+import threading
+
+HERE = os.path.dirname(os.path.realpath(__file__))
+TUNNEL = [os.path.join(HERE, "win-demo-vm")]
+CACHE = os.path.expanduser("~/.cache/win-demo-mcp/handshake.json")
+INIT_ID = "win-demo-lazy-init"
+LIST_ID = "win-demo-lazy-list"
+EMPTY_LISTS = {"prompts/list": "prompts", "resources/list": "resources",
+               "resources/templates/list": "resourceTemplates"}
+
+out_lock = threading.Lock()
+
+
+def send(msg):
+    with out_lock:
+        sys.stdout.write(json.dumps(msg) + "\n")
+        sys.stdout.flush()
+
+
+def load_cache():
+    try:
+        with open(CACHE) as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
+
+
+class Upstream:
+    """The real server behind the tunnel, connected on first use."""
+
+    def __init__(self):
+        self.proc = None
+        self.init_params = None
+
+    def connect(self):
+        self.proc = subprocess.Popen(TUNNEL, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1)
+        params = self.init_params or {"protocolVersion": "2025-06-18", "capabilities": {},
+                                      "clientInfo": {"name": "win-demo-mcp", "version": "1"}}
+        self.write({"jsonrpc": "2.0", "id": INIT_ID, "method": "initialize", "params": params})
+        reply = self.read_reply(INIT_ID)
+        self.write({"jsonrpc": "2.0", "method": "notifications/initialized"})
+        return reply
+
+    def write(self, msg):
+        self.proc.stdin.write(json.dumps(msg) + "\n")
+        self.proc.stdin.flush()
+
+    def read_reply(self, want_id):
+        for line in self.proc.stdout:
+            msg = json.loads(line)
+            if msg.get("id") == want_id:
+                return msg
+        raise ConnectionError("tunnel closed before replying")
+
+    def pump(self):
+        for line in self.proc.stdout:
+            sys.stdout.write(line)
+            sys.stdout.flush()
+        os._exit(0)
+
+
+def refresh_cache():
+    up = Upstream()
+    init = up.connect()
+    up.write({"jsonrpc": "2.0", "id": LIST_ID, "method": "tools/list", "params": {}})
+    tools = up.read_reply(LIST_ID)
+    os.makedirs(os.path.dirname(CACHE), exist_ok=True)
+    with open(CACHE, "w") as f:
+        json.dump({"initialize": init["result"], "tools": tools["result"]}, f)
+    up.proc.terminate()
+    print(f"cached {len(tools['result'].get('tools', []))} tools in {CACHE}")
+
+
+def main():
+    cache = load_cache()
+    up = Upstream()
+    for line in sys.stdin:
+        if not line.strip():
+            continue
+        msg = json.loads(line)
+        if up.proc:
+            up.write(msg)
+            continue
+        method = msg.get("method")
+        if method == "initialize":
+            up.init_params = msg.get("params")
+        if cache and method == "initialize":
+            send({"jsonrpc": "2.0", "id": msg["id"], "result": cache["initialize"]})
+        elif cache and method == "tools/list":
+            send({"jsonrpc": "2.0", "id": msg["id"], "result": cache["tools"]})
+        elif method == "ping":
+            send({"jsonrpc": "2.0", "id": msg["id"], "result": {}})
+        elif method in EMPTY_LISTS:
+            # clients list these on connect; answering empty keeps the VM off
+            send({"jsonrpc": "2.0", "id": msg["id"], "result": {EMPTY_LISTS[method]: []}})
+        elif "id" not in msg:
+            pass  # notifications before the upstream exists (initialized, cancelled)
+        else:
+            try:
+                init = up.connect()
+            except Exception as e:
+                send({"jsonrpc": "2.0", "id": msg["id"],
+                      "error": {"code": -32000, "message": f"win-demo VM did not come up: {e}"}})
+                up.proc = None
+                continue
+            if method == "initialize":
+                send({"jsonrpc": "2.0", "id": msg["id"], "result": init["result"]})
+            else:
+                up.write(msg)
+            threading.Thread(target=up.pump, daemon=True).start()
+    if up.proc:
+        up.proc.stdin.close()
+        up.proc.wait()
+
+
+if __name__ == "__main__":
+    if sys.argv[1:] == ["--refresh-cache"]:
+        refresh_cache()
+    else:
+        main()

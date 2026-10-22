@@ -1,0 +1,32 @@
+<section id="see" data-transition="fade" style="background:#F4F1EA;color:#1B222C;font-family:'Space Grotesk', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;justify-content:space-between;gap:48px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#B4501A;letter-spacing:2px;text-transform:uppercase">02 · Two ways to see</p>
+<h2 style="font-size:72px;font-weight:600;line-height:1.1;letter-spacing:-1px;color:#1B222C">Pixels or the element tree</h2>
+</div>
+<div style="display:flex;gap:32px">
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#FFFDF8;border:1px solid #E2DCCF;border-radius:16px;padding:48px">
+<h3 style="font-size:44px;font-weight:600;line-height:1.2;color:#1B222C">Vision</h3>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#B4501A">screenshot → mouse_click(x, y)</p>
+<ul style="font-size:32px;line-height:1.4;color:#4A5260">
+<li>Works on anything that renders</li>
+<li>Breaks when layout, theme or scaling changes</li>
+<li>Every step costs an image</li>
+</ul>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#FFFDF8;border:2px solid #B4501A;border-radius:16px;padding:48px">
+<h3 style="font-size:44px;font-weight:600;line-height:1.2;color:#1B222C">UI Automation tree</h3>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#B4501A">find_elements → click_element</p>
+<ul style="font-size:32px;line-height:1.4;color:#4A5260">
+<li>Reads names, roles and states, like a screen reader</li>
+<li>Survives resizes and themes</li>
+<li>Blind to custom-drawn UI and games</li>
+</ul>
+</div>
+</div>
+<p style="font-size:32px;line-height:1.4;color:#1B222C"><b>The server offers both.</b> Try the tree first, fall back to pixels.</p>
+<div style="position:absolute;left:128px;bottom:64px;width:1664px;display:flex;justify-content:space-between">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#5C6370">LLM Computer Use</p>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#5C6370">09</p>
+</div>
+<aside>7:00 to 7:45. Most people picture computer use as the model looking at screenshots and clicking coordinates. That works on anything, but it is fragile: a theme change, a different DPI, or a window moved by a few pixels and the click lands somewhere else. And each step means sending an image to the model. The alternative is the UI Automation tree, the same API screen readers use: every button has a name, a role and a state, so the model can say click the button named Save. That survives layout changes and is cheaper. Its weak spot is custom-drawn UI, canvases and games, where there is no tree. This server offers both, and the best results come from tree first, pixels as a fallback.</aside>
+</section>

@@ -1,0 +1,16 @@
+using System.Windows.Forms;
+using System.Drawing;
+ApplicationConfiguration.Initialize();
+var f = new Form { Text = "McpTestApp", Width = 520, Height = 380, StartPosition = FormStartPosition.Manual, Location = new Point(300, 200) };
+var title = new Label { Text = "Login", Name = "lblTitle", Left = 20, Top = 15, Width = 200, Font = new Font("Segoe UI", 16) };
+var user = new TextBox { Name = "txtUser", Left = 20, Top = 60, Width = 220 };
+var pw = new TextBox { Name = "txtPass", Left = 20, Top = 95, Width = 220, UseSystemPasswordChar = true };
+var btn = new Button { Name = "btnLogin", Text = "Login", Left = 20, Top = 130, Width = 100 };
+var status = new Label { Name = "lblStatus", Text = "idle", Left = 140, Top = 135, Width = 300 };
+var combo = new ComboBox { Name = "cmbColor", Left = 20, Top = 180, Width = 200, DropDownStyle = ComboBoxStyle.DropDownList };
+combo.Items.AddRange(new object[] { "Red", "Green", "Blue", "Yellow" });
+combo.SelectedIndexChanged += (s, e) => status.Text = "color=" + combo.SelectedItem;
+btn.Click += (s, e) => status.Text = "clicked login by " + user.Text;
+var edit2 = new TextBox { Name = "txtOther", Left = 20, Top = 220, Width = 220 };
+f.Controls.AddRange(new Control[] { title, user, pw, btn, status, combo, edit2 });
+Application.Run(f);

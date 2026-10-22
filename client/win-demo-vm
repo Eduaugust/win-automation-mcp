@@ -1,0 +1,92 @@
+#!/bin/bash
+# VM control + raw MCP tunnel for the win-demo UTM VM (Windows 11 ARM64 on SSD-Eduardo).
+# Starts or resumes the VM on demand, waits for win-automation-mcp, then tunnels
+# stdio to 127.0.0.1:8765 inside the guest over SSH. When the last tunnel closes,
+# the VM is suspended (state saved to disk) after WIN_DEMO_IDLE_MIN minutes.
+#
+#   win-demo-vm             boot if needed, then raw stdio tunnel to the MCP
+#   win-demo-vm --up        boot/resume and wait until the MCP is ready
+#   win-demo-vm --ip        print the guest IP
+#   win-demo-vm --suspend   suspend now (saving state)
+
+VM=C4C7893F-D143-460D-9A94-D4D1282D7FA8
+MAC=62:d8:a2:7c:da:52
+KEY=$HOME/.ssh/id_ed25519_win_demo
+KNOWN=$HOME/.ssh/known_hosts_win_demo
+IDLE_MIN=${WIN_DEMO_IDLE_MIN:-15}
+BOOT_TIMEOUT=${WIN_DEMO_BOOT_TIMEOUT:-240}
+LOG=$HOME/Library/Logs/win-demo-vm.log
+TUNNEL_TAG="-W 127.0.0.1:8765 demo@"
+
+log() { echo "$(date '+%F %T') [$$] $*" >> "$LOG"; }
+
+ssh_opts=(-i "$KEY" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=5
+          -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$KNOWN"
+          -o ServerAliveInterval=15)
+
+vm_status() { utmctl status "$VM" 2>/dev/null; }
+
+guest_ip() {
+    # vmnet writes MACs without leading zeros per octet
+    local mac
+    mac=$(echo "$MAC" | sed -E 's/(^|:)0([0-9a-f])/\1\2/g')
+    awk -v hw="hw_address=1,$mac" '
+        /ip_address=/ { ip = substr($0, index($0, "=") + 1) }
+        index($0, hw) { print ip; exit }
+    ' /var/db/dhcpd_leases
+}
+
+mcp_ready() {
+    local ip=$1
+    nc -z -G 2 "$ip" 22 2>/dev/null || return 1
+    ssh -n "${ssh_opts[@]}" "demo@$ip" 'netstat -an | findstr LISTENING | findstr 127.0.0.1:8765' >/dev/null 2>&1
+}
+
+up() {
+    pgrep -xq UTM || { open -g -a UTM; sleep 3; }
+    case "$(vm_status)" in
+        started) ;;
+        *) log "starting VM (status: $(vm_status))"; utmctl start --hide "$VM" >/dev/null 2>&1 ;;
+    esac
+    local deadline=$((SECONDS + BOOT_TIMEOUT)) ip
+    while [ $SECONDS -lt $deadline ]; do
+        ip=$(guest_ip)
+        if [ -n "$ip" ] && mcp_ready "$ip"; then
+            log "ready at $ip after ${SECONDS}s"
+            echo "$ip"
+            return 0
+        fi
+        sleep 2
+    done
+    log "timed out after ${BOOT_TIMEOUT}s waiting for the MCP"
+    return 1
+}
+
+suspend_if_idle() {
+    sleep $((IDLE_MIN * 60))
+    if pgrep -f -- "$TUNNEL_TAG" >/dev/null; then
+        return
+    fi
+    if [ "$(vm_status)" = started ]; then
+        log "idle for ${IDLE_MIN}m, suspending"
+        utmctl suspend --save-state "$VM" >/dev/null 2>&1
+    fi
+}
+
+case "${1:-}" in
+    --up) up; exit ;;
+    --ip) guest_ip; exit ;;
+    --suspend) utmctl suspend --save-state "$VM"; exit ;;
+    --idle-check) suspend_if_idle; exit ;;
+esac
+
+ip=$(up < /dev/null) || exit 1
+log "tunnel open to $ip"
+ssh "${ssh_opts[@]}" -W 127.0.0.1:8765 "demo@$ip" <&0 &
+child=$!
+trap 'kill "$child" 2>/dev/null' TERM INT HUP
+wait "$child"
+status=$?
+log "tunnel closed (exit $status)"
+nohup "$0" --idle-check >/dev/null 2>&1 &
+exit $status

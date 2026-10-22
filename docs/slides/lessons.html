@@ -1,0 +1,29 @@
+<section id="lessons" data-transition="fade" style="background:#121821;color:#E9EDF2;font-family:'Space Grotesk', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#FF8A3D;letter-spacing:2px;text-transform:uppercase">05 · Lessons learned</p>
+<h2 style="font-size:72px;font-weight:600;line-height:1.1;letter-spacing:-1px;color:#E9EDF2">What building it taught me</h2>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:32px">
+<div style="display:flex;flex-direction:column;gap:12px;background:#1C2531;border:1px solid #2E3A4A;border-radius:16px;padding:48px">
+<h3 style="font-size:44px;font-weight:600;line-height:1.2;color:#FF8A3D">Tree first, pixels second</h3>
+<p style="font-size:32px;line-height:1.4;color:#B8C2CF">Element names survive redesigns. Coordinates do not.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;background:#1C2531;border:1px solid #2E3A4A;border-radius:16px;padding:48px">
+<h3 style="font-size:44px;font-weight:600;line-height:1.2;color:#FF8A3D">Always verify</h3>
+<p style="font-size:32px;line-height:1.4;color:#B8C2CF">wait_for and assert_state turn “I clicked” into “it worked”.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;background:#1C2531;border:1px solid #2E3A4A;border-radius:16px;padding:48px">
+<h3 style="font-size:44px;font-weight:600;line-height:1.2;color:#FF8A3D">Expect flakiness</h3>
+<p style="font-size:32px;line-height:1.4;color:#B8C2CF">Slow windows, stolen focus, surprise popups. Waits beat sleeps.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;background:#1C2531;border:1px solid #2E3A4A;border-radius:16px;padding:48px">
+<h3 style="font-size:44px;font-weight:600;line-height:1.2;color:#FF8A3D">Let it see its mistakes</h3>
+<p style="font-size:32px;line-height:1.4;color:#B8C2CF">Errors show up on screen, so the model can notice them and retry.</p>
+</div>
+</div>
+<div style="position:absolute;left:128px;bottom:64px;width:1664px;display:flex;justify-content:space-between">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#8A96A6">LLM Computer Use</p>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#8A96A6">20</p>
+</div>
+<aside>21:45 to 22:45. Four lessons. One: prefer the element tree; coordinates break the moment a window moves or the theme changes. Two: always verify; a tool call that returns OK only means the click was sent. wait_for and assert_state check the result. Three: the desktop is flaky by nature. Windows open slowly, other apps steal focus, update prompts pop up. Waiting for a condition beats sleeping for a fixed time. Four: because the model looks at the screen, it can see its own errors (a dialog it did not expect, a field that did not fill) and try again. A real failure from preparing this talk: the chess recording died silently at move 28. set_recording_caption rewrote the caption file in place while ffmpeg was reading it, ffmpeg hit an I/O error and stopped, and nothing reported it. That is why the end of the chess clip is marked REPLAY. The fix is a write to a temp file plus an atomic rename, and recording_status should surface a dead ffmpeg.</aside>
+</section>

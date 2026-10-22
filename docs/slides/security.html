@@ -1,0 +1,18 @@
+<section id="security" data-transition="fade" style="background:#F4F1EA;color:#1B222C;font-family:'Space Grotesk', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#B4501A;letter-spacing:2px;text-transform:uppercase">05 · Security</p>
+<h2 style="font-size:72px;font-weight:600;line-height:1.1;letter-spacing:-1px;color:#1B222C">Full OS control means sandbox first</h2>
+</div>
+<table style="font-size:32px;color:#1B222C;font-family:'Space Grotesk', Arial, sans-serif">
+<tr style="background:#E9E4D8"><th style="width:30%;text-align:left">Layer</th><th style="width:70%;text-align:left">What it protects</th></tr>
+<tr><td>Disposable VM</td><td>A UTM guest, separate from the host and from real data</td></tr>
+<tr><td>Localhost only</td><td>The server binds 127.0.0.1:8765, nothing on the network</td></tr>
+<tr><td>SSH key</td><td>The only way in is a tunnel with a dedicated key</td></tr>
+<tr><td>Human in the loop</td><td>run_powershell and kill_process can do anything, so a person approves</td></tr>
+</table>
+<div style="position:absolute;left:128px;bottom:64px;width:1664px;display:flex;justify-content:space-between">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#5C6370">LLM Computer Use</p>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#5C6370">21</p>
+</div>
+<aside>22:45 to 23:45. Be direct about the risk. This server can run any PowerShell command, kill any process, and write any file. That is the point, and it is also why it never runs on a real workstation. Four layers: it lives in a disposable VM with no real data; it only listens on localhost; the only path in is SSH with a dedicated key; and the MCP client asks a human to approve tool calls. Mention prompt injection briefly: if the model reads a web page or document that contains instructions, those instructions could steer it, which is one more reason to keep it in a sandbox.</aside>
+</section>
