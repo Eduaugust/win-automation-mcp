@@ -1,7 +1,7 @@
 import sys,re; sys.path.insert(0,'/tmp/winmcp')
 from mcp import C
 c=C()
-exe="C:\\Users\\Eduardo\\winmcp_scratch\\testapp\\bin\\Release\\net8.0-windows\\TestApp.exe"
+exe="C:\\path\\to\\TestApp.exe"  # adjust to your TestApp build
 r=c.call("launch_app",{"path":exe,"settle_ms":1500})
 pid=int(re.search(r"pid=(\d+)",r).group(1))
 W="McpTestApp"

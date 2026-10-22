@@ -129,6 +129,11 @@ Any MCP client works the same way: the command is just the tunnel.
 
 `run_powershell`, `run_cmd`, `write_file` and `kill_process` are arbitrary code execution as the logged-on user. Screenshots, recordings, `get_element_text` and `clipboard_get` show whatever is on screen, including revealed passwords. Run it only in a disposable VM, never expose the port, and keep recordings out of git. The server log records argument names only, never values.
 
+Known issues in 0.4.0:
+
+- No authentication on the local port, and lines that are not JSON are skipped instead of closing the connection. Any local process can call tools, and so can a web page opened inside the VM (a browser POST to `127.0.0.1:8765` can carry a JSON-RPC line). Do not browse untrusted sites in the VM.
+- `run_steps` can run `run_powershell`, `write_file` or `kill_process` inside a batch, so a client that approves tools one by one only sees the `run_steps` call.
+
 ## Lessons learned
 
 ![What building it taught me](docs/img/slide-lessons.png)

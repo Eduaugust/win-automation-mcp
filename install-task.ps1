@@ -2,7 +2,7 @@
 Registers (or removes) a Scheduled Task that runs the MCP server at logon IN THE INTERACTIVE SESSION of the current user.
 Run it from an elevated or normal PowerShell as that same user (no password needed, task only runs while the user is logged on).
 
-  .\install-task.ps1 -ExePath C:\Users\Eduardo\WinAutomationMcp_next\bin\Release\net8.0-windows\WinAutomationMcp.exe -Port 8766 -TaskName WinAutomationMcpTest -StartNow
+  .\install-task.ps1 -ExePath C:\path\to\WinAutomationMcp.exe -Port 8766 -TaskName WinAutomationMcpTest -StartNow
   .\install-task.ps1 -TaskName WinAutomationMcpTest -Remove
 #>
 param(

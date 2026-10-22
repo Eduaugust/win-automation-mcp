@@ -4,8 +4,6 @@ Windows UI automation MCP server (C#, net8.0-windows, FlaUI/UIA3). It listens on
 
 0.4.0 adds batching (`run_steps`), sharper element targeting, launch helpers that wait for the window, and a compact UI listing (`describe_ui`). Everything from 0.3.0 keeps working. 42 tools in total (`server_info` lists them).
 
-The production server on port 8765 is untouched until you deploy (see "Deploy 0.4.0"). This build was tested as a separate instance on port 8766 from `C:\Users\Eduardo\WinAutomationMcp_dev`.
-
 ## What is new in 0.4.0
 
 | Area | Tool / change |
@@ -21,8 +19,8 @@ The production server on port 8765 is untouched until you deploy (see "Deploy 0.
 ### run_steps
 
 ```json
-{"window": "TruScript", "steps": [
-  {"action": "launch_packaged_app", "aumid": "01d055ef-a6b2-4a57-b9dc-54732a6f5091_tz0f82bc539pg!App", "wait_ms": 90000},
+{"window": "MyApp", "steps": [
+  {"action": "launch_packaged_app", "aumid": "Contoso.MyApp_0123456789abc!App", "wait_ms": 90000},
   {"action": "wait_for", "automation_id": "PasswordTextBox", "condition": "exists", "timeout_ms": 20000},
   {"action": "set_value", "control_type": "Edit", "nth": 0, "text": "someuser"},
   {"action": "set_value", "automation_id": "PasswordTextBox", "text": "..."},
@@ -45,14 +43,14 @@ The production server on port 8765 is untouched until you deploy (see "Deploy 0.
 All selectors combine with AND: `target` (AutomationId or Name, as before), `automation_id` (exact), `name` (exact), `name_regex` (case-insensitive, unanchored), `control_type`, `match=contains`. `parent` selects a container (AutomationId or Name) that scopes the search, `parent_control_type`/`parent_nth` narrow it. `nth` picks among the matches (document order). Use `describe_ui` or `find_elements` to see candidates.
 
 ```
-click_element window=TruScript target=Login control_type=Button
+click_element window=MyApp target=Login control_type=Button
 click_element window=Notepad name_regex="^(File|Edit|View)$" nth=1 strict=true
 find_elements window=App control_type=Edit parent=SettingsPanel
 ```
 
 ### describe_ui
 
-`describe_ui window=TruScript` prints one line per interactive element, for example:
+`describe_ui window=MyApp` prints one line per interactive element, for example:
 
 ```
 Edit "" id="PasswordTextBox" rel=(93,266,500x32) click=(343,282) sel: automation_id=PasswordTextBox
@@ -98,7 +96,7 @@ Edit "" id="" rel=(93,204,502x32) click=(344,220) sel: control_type=Edit nth=0
 ## Build
 
 ```powershell
-cd C:\Users\Eduardo\WinAutomationMcp_040src
+cd <source folder>
 dotnet build -c Release -nologo
 # output: bin\Release\net8.0-windows\WinAutomationMcp.exe
 ```
@@ -108,7 +106,7 @@ dotnet build -c Release -nologo
 It must be started in the interactive session. Over ssh use the scheduled task helper (a task with an Interactive principal runs in the logged-on user's session):
 
 ```powershell
-.\install-task.ps1 -ExePath C:\Users\Eduardo\WinAutomationMcp_040src\bin\Release\net8.0-windows\WinAutomationMcp.exe -Port 8766 -TaskName WinAutomationMcpTest -StartNow
+.\install-task.ps1 -ExePath bin\Release\net8.0-windows\WinAutomationMcp.exe -Port 8766 -TaskName WinAutomationMcpTest -StartNow
 # remove when done
 .\install-task.ps1 -TaskName WinAutomationMcpTest -Remove
 ```
@@ -127,7 +125,7 @@ PORT=8766 python3 -c "from mcp_client import C; c=C(); c.call('server_info'); c.
 Quick recording check on the VM after a recording:
 
 ```powershell
-.\tools\ffprobe.exe -v error -show_entries stream=codec_name,width,height,nb_frames,duration -of default=nw=1 C:\Users\Eduardo\recordings\<file>.mp4
+.\tools\ffprobe.exe -v error -show_entries stream=codec_name,width,height,nb_frames,duration -of default=nw=1 %USERPROFILE%\recordings\<file>.mp4
 ```
 
 ## Recording notes
@@ -135,7 +133,7 @@ Quick recording check on the VM after a recording:
 - `start_recording window=...` records the rectangle of the window (visible frame plus nearby popups) as it was at start. If the window moves or resizes during the recording the area does not follow. Without `window` it records the whole virtual screen.
 - `max_seconds` (default 300) is enforced by ffmpeg itself; when it expires the file is closed properly and `stop_recording` still reports it.
 - Caption: pass `caption` at start (an empty string enables the overlay), change it live with `set_recording_caption`.
-- Default output folder `C:\Users\Eduardo\recordings\`. To fetch: `scp win-vm:C:/Users/Eduardo/recordings/<file>.mp4 .`
+- Default output folder `%USERPROFILE%\recordings\`. To fetch: `scp win-vm:recordings/<file>.mp4 .`
 - Recordings are not stopped when the MCP connection drops; they stop at `max_seconds` or when the server exits.
 
 ## Security
@@ -150,50 +148,4 @@ Quick recording check on the VM after a recording:
 - Log: `<exe folder>\logs\win-mcp-<port>.log` (rotates at 5 MB, one `.1` backup). Each connection logs open time, remote endpoint, request count and the close reason (client EOF, peer reset or tunnel drop, write failure).
 - Two connections at once are supported (verified). UI tools are serialized; commands, files and recordings run in parallel.
 - Survive logon: `install-task.ps1 -Port 8765 -TaskName WinAutomationMcp -StartNow` creates an at-logon Interactive task (restarts up to 5 times, 1 minute apart). The VM user must be logged in (enable auto-logon, otherwise after a reboot there is no desktop session and no UI to automate).
-- Tunnel keepalive: the client side should use `ServerAliveInterval 15` and `ServerAliveCountMax 4` (already set in the Mac ssh config). Better, use `win-mcp-proxy.py` as the MCP command so a dropped tunnel is re-established automatically and in-flight calls fail fast instead of hanging: `claude mcp add windows-automation -- python3 /path/to/win-mcp-proxy.py --host win-vm --port 8765`. Tested by killing the ssh child mid-session: the next call succeeded on a new tunnel.
-
-## Deploy 0.4.0 (only after approval)
-
-State before deploy (checked 2026-10-09): live server is `C:\Users\Eduardo\WinAutomationMcp_live\WinAutomationMcp.exe` (0.3.0) on 8765, run by the Scheduled Task `WinAutomationMcp` (interactive session). 0.4.0 is built in `C:\Users\Eduardo\WinAutomationMcp_dev` (source in `C:\Users\Eduardo\WinAutomationMcp_040src`). Warn other sessions first: stopping the server drops their connections (Claude Code needs `/mcp` > Reconnect, unless they go through `win-mcp-proxy.py`).
-
-Run in PowerShell on the VM (ssh is fine, the task restarts the server in the interactive session):
-
-```powershell
-# 1. Backup the running 0.3.0 folder (this is the rollback copy)
-robocopy C:\Users\Eduardo\WinAutomationMcp_live C:\Users\Eduardo\WinAutomationMcp_live_0.3.0 /MIR /NFL /NDL /NJH /NJS
-
-# 2. Stop the live server through its task (kills only the process the task started)
-Stop-ScheduledTask -TaskName WinAutomationMcp
-Start-Sleep 2
-
-# 3. Copy 0.4.0 over the live folder (logs are kept)
-robocopy C:\Users\Eduardo\WinAutomationMcp_dev C:\Users\Eduardo\WinAutomationMcp_live /MIR /XD logs /NFL /NDL /NJH /NJS
-
-# 4. Start it again
-Start-ScheduledTask -TaskName WinAutomationMcp
-
-# 5. Verify (from the Mac, through the tunnel): server_info must say 0.4.0, port 8765, session_id 1
-```
-
-If the live exe is not started by the task (for example it was started by hand in a terminal, as in the older setup), stop that exact PID first (check its path with `Get-Process WinAutomationMcp | Select Id,Path`) and register the task once with `install-task.ps1 -ExePath C:\Users\Eduardo\WinAutomationMcp_live\WinAutomationMcp.exe -Port 8765 -TaskName WinAutomationMcp -StartNow`.
-
-### Rollback to 0.3.0
-
-```powershell
-Stop-ScheduledTask -TaskName WinAutomationMcp
-Start-Sleep 2
-robocopy C:\Users\Eduardo\WinAutomationMcp_live_0.3.0 C:\Users\Eduardo\WinAutomationMcp_live /MIR /XD logs /NFL /NDL /NJH /NJS
-Start-ScheduledTask -TaskName WinAutomationMcp
-```
-
-Older rollback (0.2.0): `C:\Users\Eduardo\WinAutomationMcp\bin\Debug\net8.0-windows\WinAutomationMcp.exe` is untouched; it ignores `--port` and listens on 8765, so register it with `install-task.ps1 -ExePath <that exe> -Port 8765 -TaskName WinAutomationMcpOld -StartNow` after removing the new task.
-
-### The 8766 test instance
-
-During development a second task `WinAutomationMcpDev` (port 8766, exe in `WinAutomationMcp_dev`) was registered and left running. It does not touch 8765. Remove it when no longer needed (this also stops it):
-
-```powershell
-.\install-task.ps1 -TaskName WinAutomationMcpDev -Remove
-```
-
-Rebuild 0.4.0 from source: `cd C:\Users\Eduardo\WinAutomationMcp_040src; dotnet build -c Release -nologo`, then copy `bin\Release\net8.0-windows` plus `tools` to the target folder (stop the instance that uses it first, the exe is locked while it runs).
+- Tunnel keepalive: the client side should use `ServerAliveInterval 15` and `ServerAliveCountMax 4`. Better, use `win-mcp-proxy.py` as the MCP command so a dropped tunnel is re-established automatically and in-flight calls fail fast instead of hanging: `claude mcp add windows-automation -- python3 /path/to/win-mcp-proxy.py --host win-vm --port 8765`. Tested by killing the ssh child mid-session: the next call succeeded on a new tunnel.
