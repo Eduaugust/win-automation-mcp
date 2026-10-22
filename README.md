@@ -1,8 +1,45 @@
 # win-automation-mcp
 
-![LLM Computer Use: Windows Automation with MCP](docs/img/slide-cover.png)
-
 An MCP server that lets any LLM client (Claude Code, Cursor, Copilot, a local model) drive a Windows desktop: read the UI Automation tree, click, type, manage windows, run PowerShell, and record the screen with captions as evidence.
+
+[![Install with your agent: copy the prompt below](https://img.shields.io/badge/Install_with_your_agent-copy_the_prompt_below-e8590c?style=for-the-badge)](#install-with-your-agent)
+
+## Install with your agent
+
+Copy this prompt into your coding agent (Claude Code, Cursor, Copilot...) on the machine where you run it. The agent sets everything up and tells you when it is done.
+
+```text
+Install the win-automation-mcp MCP server for me and connect it to this agent.
+Setup: I run you on this machine, and a Windows on ARM machine (usually a VM) is reachable over SSH.
+The server runs inside Windows on 127.0.0.1:8765 and you reach it through `ssh -W`.
+
+1. Find the SSH host of the Windows machine: look in ~/.ssh/config, otherwise ask me.
+   Check `ssh -o BatchMode=yes <host> "echo %PROCESSOR_ARCHITECTURE%"` prints ARM64.
+   If SSH fails, stop and tell me to enable OpenSSH Server in Windows and add my key.
+   If it prints AMD64, stop: the prebuilt release is ARM64 only.
+2. Check `ssh <host> "dotnet --list-runtimes"` lists Microsoft.WindowsDesktop.App 8.x.
+   If not, ask me before installing it with
+   `ssh <host> "winget install --id Microsoft.DotNet.DesktopRuntime.8 -e --accept-package-agreements --accept-source-agreements"`.
+3. Download the release here:
+   `gh release download v0.4.0 -R Eduaugust/win-automation-mcp -p "WinAutomationMcp-0.4.0-win-arm64.zip"`
+   and check its SHA-256 is 96f521058ebe17d84110225d1ec1ae7aa1a42d95c4338f4c2ddeb73e4fc42025.
+4. Copy and unzip it into the Windows user profile:
+   `scp WinAutomationMcp-0.4.0-win-arm64.zip <host>:WinAutomationMcp.zip`
+   `ssh <host> "powershell -NoProfile -Command Expand-Archive -Force WinAutomationMcp.zip $env:USERPROFILE"`
+5. Register the logon task (it runs the server in the interactive desktop session, never as a service):
+   `ssh <host> "powershell -NoProfile -ExecutionPolicy Bypass -File WinAutomationMcp\install-task.ps1 -Port 8765 -StartNow"`
+   Check `ssh <host> "netstat -an | findstr 127.0.0.1:8765"` shows LISTENING.
+   If not, I am probably not logged on to the Windows desktop: ask me to log on, then check again.
+6. Add the MCP server to this agent with the command `ssh -W 127.0.0.1:8765 <host>`
+   (Claude Code: `claude mcp add windows-automation -- ssh -W 127.0.0.1:8765 <host>`).
+   Tell me if I need to restart or reconnect you.
+7. Call the `server_info` tool and confirm session_id is not 0 and ffmpeg is found.
+   Then show me the result and one `list_windows` call.
+```
+
+Prefer to do it by hand? See [Install](#install-in-the-windows-vm) and [Connect from the host](#connect-from-the-host).
+
+![LLM Computer Use: Windows Automation with MCP](docs/img/slide-cover.png)
 
 It is a single .NET 8 executable (C#, FlaUI/UIA3) that runs inside a Windows VM, listens on `127.0.0.1:8765` only, and is reached from the host through an SSH tunnel. Nothing listens on the network.
 
